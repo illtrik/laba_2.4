@@ -1,7 +1,7 @@
 import struct
 
 def process_file_inplace(filename):
-    divisor = 73 * 2 + 29  # 175
+    divisor = 73 * 2 + 29
     with open(filename, 'r+b') as f:
         int_size = 4
         while True:
