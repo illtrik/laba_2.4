@@ -7,14 +7,12 @@ class JsonParser:
         self.length = 0
         self.line = 1
 
-    # --- Сериализация ---
     def serialize(self, obj):
         if obj is None:
             return 'null'
         elif isinstance(obj, bool):
             return 'true' if obj else 'false'
         elif isinstance(obj, (int, float)):
-            # В JSON числа не могут быть NaN или Infinity
             if isinstance(obj, float):
                 if obj != obj or obj == float('inf') or obj == float('-inf'):
                     raise ValueError("Числа NaN и Infinity не поддерживаются в JSON")
@@ -52,7 +50,6 @@ class JsonParser:
                 return c
         return '"' + ''.join(replace_char(c) for c in s) + '"'
 
-    # --- Десериализация ---
     def parse(self, text):
         self.text = text
         self.pos = 0
@@ -109,7 +106,7 @@ class JsonParser:
 
     def _parse_object(self):
         obj = {}
-        self.pos += 1  # пропускаем '{'
+        self.pos += 1
         self._skip_whitespace()
         if self._peek() == '}':
             self.pos += 1
@@ -139,7 +136,7 @@ class JsonParser:
 
     def _parse_array(self):
         arr = []
-        self.pos += 1  # пропускаем '['
+        self.pos += 1
         self._skip_whitespace()
         if self._peek() == ']':
             self.pos += 1
@@ -161,7 +158,7 @@ class JsonParser:
 
     def _parse_string(self):
         assert self._peek() == '"'
-        self.pos += 1  # пропускаем открывающую кавычку
+        self.pos += 1
         result = []
         while True:
             if self.pos >= self.length:
@@ -221,7 +218,6 @@ class JsonParser:
         snippet = self.text[self.pos:self.pos+20].split('\n',1)[0]
         raise ValueError(f'Ошибка в JSON на строке {self.line}: {message}. Текущий фрагмент: {snippet!r}')
 
-    # --- Pretty print с отступами ---
     def pretty_print(self, obj, indent=4):
         return self._pretty(obj, indent, 0)
 
@@ -251,7 +247,6 @@ class JsonParser:
         else:
             raise TypeError(f"Тип {type(obj)} не поддерживается для pretty-print")
 
-    # --- Валидация с указанием строки ошибки ---
     def validate(self, text):
         try:
             self.parse(text)
