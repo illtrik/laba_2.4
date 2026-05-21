@@ -1,1 +1,1 @@
-![test_1]("C:\Users\user\Pictures\Screenshots\test_1.png")
+![test_1]("test_1.png")
