@@ -1,262 +1,285 @@
-import re
+class JsonParserError(Exception):
+    def __init__(self, message, line_no):
+        super().__init__(f"Line {line_no}: {message}")
+        self.line_no = line_no
 
-class JsonParser:
-    def __init__(self):
-        self.text = ''
-        self.pos = 0
-        self.length = 0
-        self.line = 1
 
-    def serialize(self, obj):
-        if obj is None:
-            return 'null'
-        elif isinstance(obj, bool):
-            return 'true' if obj else 'false'
-        elif isinstance(obj, (int, float)):
-            if isinstance(obj, float):
-                if obj != obj or obj == float('inf') or obj == float('-inf'):
-                    raise ValueError("Числа NaN и Infinity не поддерживаются в JSON")
-            return str(obj)
-        elif isinstance(obj, str):
-            return self._serialize_string(obj)
-        elif isinstance(obj, list):
-            return '[' + ','.join(self.serialize(el) for el in obj) + ']'
-        elif isinstance(obj, dict):
-            parts = []
-            for k, v in obj.items():
-                if not isinstance(k, str):
-                    raise TypeError('Ключи словаря должны быть строками!')
-                parts.append(self.serialize(k) + ':' + self.serialize(v))
-            return '{' + ','.join(parts) + '}'
-        else:
-            raise TypeError(f"Тип {type(obj)} не поддерживается")
+def serialize(obj):
+    if obj is None:
+        return "null"
+    elif isinstance(obj, bool):
+        return "true" if obj else "false"
+    elif isinstance(obj, (int, float)):
+        return str(obj)
+    elif isinstance(obj, str):
+        # Экранирование
+        esc = obj.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t',
+                                                                                                              '\\t')
+        return '"' + esc + '"'
+    elif isinstance(obj, list):
+        return "[" + ",".join(serialize(item) for item in obj) + "]"
+    elif isinstance(obj, dict):
+        items = []
+        for k, v in obj.items():
+            if not isinstance(k, str):
+                raise TypeError("JSON object keys must be strings")
+            items.append(serialize(k) + ":" + serialize(v))
+        return "{" + ",".join(items) + "}"
+    else:
+        raise TypeError("Type not serializable: " + str(type(obj)))
 
-    def _serialize_string(self, s):
-        replacements = {
-            '\\': '\\\\',
-            '"': '\\"',
-            '\b': '\\b',
-            '\f': '\\f',
-            '\n': '\\n',
-            '\r': '\\r',
-            '\t': '\\t',
-        }
-        def replace_char(c):
-            if c in replacements:
-                return replacements[c]
-            elif ord(c) < 0x20:
-                return '\\u{0:04x}'.format(ord(c))
-            else:
-                return c
-        return '"' + ''.join(replace_char(c) for c in s) + '"'
 
-    def parse(self, text):
-        self.text = text
-        self.pos = 0
-        self.length = len(text)
-        self.line = 1
-        value = self._parse_value()
-        self._skip_whitespace()
-        if self.pos != self.length:
-            self._error('Лишние символы после корректного JSON')
-        return value
+def deserialize(s):
 
-    def _peek(self):
-        if self.pos < self.length:
-            return self.text[self.pos]
-        return ''
+    pos = 0
+    line = 1
 
-    def _next(self):
-        ch = self._peek()
-        self.pos += 1
-        if ch == '\n':
-            self.line += 1
-        return ch
+    def skip_whitespace():
+        nonlocal pos, line
+        while pos < len(s) and s[pos] in " \t\n\r":
+            if s[pos] == '\n':
+                line += 1
+            pos += 1
 
-    def _skip_whitespace(self):
-        while self.pos < self.length and self.text[self.pos] in ' \t\n\r':
-            if self.text[self.pos] == '\n':
-                self.line += 1
-            self.pos += 1
+    def parse_value():
+        nonlocal pos, line
+        skip_whitespace()
+        if pos >= len(s):
+            raise JsonParserError("Unexpected end of data", line)
 
-    def _parse_value(self):
-        self._skip_whitespace()
-        ch = self._peek()
-        if ch == '':
-            self._error('Ожидалось значение, но достигнут конец')
-        elif ch == '{':
-            return self._parse_object()
-        elif ch == '[':
-            return self._parse_array()
-        elif ch == '"':
-            return self._parse_string()
-        elif ch == '-' or ch.isdigit():
-            return self._parse_number()
-        elif self.text.startswith('true', self.pos):
-            self.pos += 4
+        if s[pos] == '"':
+            return parse_string()
+        elif s[pos] == '{':
+            return parse_object()
+        elif s[pos] == '[':
+            return parse_array()
+        elif s[pos] in "-0123456789":
+            return parse_number()
+        elif s.startswith("true", pos):
+            pos_inc(4)
             return True
-        elif self.text.startswith('false', self.pos):
-            self.pos += 5
+        elif s.startswith("false", pos):
+            pos_inc(5)
             return False
-        elif self.text.startswith('null', self.pos):
-            self.pos += 4
+        elif s.startswith("null", pos):
+            pos_inc(4)
             return None
         else:
-            self._error(f'Неожиданный символ {ch!r} при попытке распарсить значение')
+            raise JsonParserError(f"Invalid value starting with '{s[pos]}'", line)
 
-    def _parse_object(self):
-        obj = {}
-        self.pos += 1
-        self._skip_whitespace()
-        if self._peek() == '}':
-            self.pos += 1
-            return obj
-        while True:
-            self._skip_whitespace()
-            if self._peek() != '"':
-                self._error('Ожидался ключ-строка объекта')
-            key = self._parse_string()
-            self._skip_whitespace()
-            if self._peek() != ':':
-                self._error('Ожидался двоеточие после ключа объекта')
-            self.pos += 1
-            val = self._parse_value()
-            obj[key] = val
-            self._skip_whitespace()
-            ch = self._peek()
-            if ch == ',':
-                self.pos += 1
-                continue
-            elif ch == '}':
-                self.pos += 1
-                break
+    def pos_inc(n):
+        nonlocal pos
+        pos += n
+
+    def parse_string():
+        nonlocal pos, line
+        if s[pos] != '"':
+            raise JsonParserError('Expected \'"\' for string start', line)
+        pos += 1
+        res = ''
+        while pos < len(s):
+            ch = s[pos]
+            if ch == '"':
+                pos += 1
+                return res
+            elif ch == '\\':
+                pos += 1
+                if pos >= len(s):
+                    raise JsonParserError("Invalid escape at end of string", line)
+                esc_ch = s[pos]
+                if esc_ch == '"':
+                    res += '"'
+                elif esc_ch == '\\':
+                    res += '\\'
+                elif esc_ch == '/':
+                    res += '/'
+                elif esc_ch == 'b':
+                    res += '\b'
+                elif esc_ch == 'f':
+                    res += '\f'
+                elif esc_ch == 'n':
+                    res += '\n'
+                elif esc_ch == 'r':
+                    res += '\r'
+                elif esc_ch == 't':
+                    res += '\t'
+                elif esc_ch == 'u':
+                    raise JsonParserError("Unicode escape not supported", line)
+                else:
+                    raise JsonParserError(f"Invalid escape character \\{esc_ch}", line)
+                pos += 1
             else:
-                self._error('Ожидалась запятая или закрывающая фигурная скобка в объекте')
-        return obj
+                if ch == '\n' or ch == '\r':
+                    raise JsonParserError("String not closed before newline", line)
+                res += ch
+                pos += 1
+        raise JsonParserError("Unterminated string literal", line)
 
-    def _parse_array(self):
+    def parse_number():
+        nonlocal pos
+        start = pos
+        if s[pos] == '-':
+            pos += 1
+        if pos < len(s) and s[pos] == '0':
+            pos += 1
+        else:
+            while pos < len(s) and s[pos].isdigit():
+                pos += 1
+        if pos < len(s) and s[pos] == '.':
+            pos += 1
+            if pos >= len(s) or not s[pos].isdigit():
+                raise JsonParserError("Invalid number format", line)
+            while pos < len(s) and s[pos].isdigit():
+                pos += 1
+        if pos < len(s) and s[pos] in 'eE':
+            pos += 1
+            if pos < len(s) and s[pos] in '+-':
+                pos += 1
+            if pos >= len(s) or not s[pos].isdigit():
+                raise JsonParserError("Invalid number format", line)
+            while pos < len(s) and s[pos].isdigit():
+                pos += 1
+
+        num_str = s[start:pos]
+        try:
+            if '.' in num_str or 'e' in num_str or 'E' in num_str:
+                return float(num_str)
+            else:
+                return int(num_str)
+        except ValueError:
+            raise JsonParserError("Invalid number: " + num_str, line)
+
+    def parse_array():
+        nonlocal pos
+        if s[pos] != '[':
+            raise JsonParserError("Expected '['", line)
+        pos += 1
+        skip_whitespace()
         arr = []
-        self.pos += 1
-        self._skip_whitespace()
-        if self._peek() == ']':
-            self.pos += 1
+        if pos < len(s) and s[pos] == ']':
+            pos += 1
             return arr
         while True:
-            val = self._parse_value()
+            val = parse_value()
             arr.append(val)
-            self._skip_whitespace()
-            ch = self._peek()
-            if ch == ',':
-                self.pos += 1
-                continue
-            elif ch == ']':
-                self.pos += 1
-                break
+            skip_whitespace()
+            if pos >= len(s):
+                raise JsonParserError("Unterminated array", line)
+            if s[pos] == ',':
+                pos += 1
+                skip_whitespace()
+            elif s[pos] == ']':
+                pos += 1
+                return arr
             else:
-                self._error('Ожидалась запятая или закрывающая квадратная скобка в массиве')
-        return arr
+                raise JsonParserError("Expected ',' or ']' in array", line)
 
-    def _parse_string(self):
-        assert self._peek() == '"'
-        self.pos += 1
-        result = []
+    def parse_object():
+        nonlocal pos
+        if s[pos] != '{':
+            raise JsonParserError("Expected '{'", line)
+        pos += 1
+        skip_whitespace()
+        obj = {}
+        if pos < len(s) and s[pos] == '}':
+            pos += 1
+            return obj
         while True:
-            if self.pos >= self.length:
-                self._error('Неожиданный конец строки внутри строки JSON')
-            ch = self._next()
-            if ch == '"':
-                break
-            if ch == '\\':
-                if self.pos >= self.length:
-                    self._error('Неожиданный конец строки после символа эскейпа')
-                esc = self._next()
-                if esc == '"':
-                    result.append('"')
-                elif esc == '\\':
-                    result.append('\\')
-                elif esc == '/':
-                    result.append('/')
-                elif esc == 'b':
-                    result.append('\b')
-                elif esc == 'f':
-                    result.append('\f')
-                elif esc == 'n':
-                    result.append('\n')
-                elif esc == 'r':
-                    result.append('\r')
-                elif esc == 't':
-                    result.append('\t')
-                elif esc == 'u':
-                    hex_digits = self.text[self.pos:self.pos+4]
-                    if len(hex_digits) < 4 or not all(c in '0123456789abcdefABCDEF' for c in hex_digits):
-                        self._error('Неверная \\u последовательность')
-                    unicode_char = chr(int(hex_digits, 16))
-                    result.append(unicode_char)
-                    self.pos += 4
-                else:
-                    self._error(f'Неверный escape-символ \\{esc}')
-            elif ord(ch) < 0x20:
-                self._error('Строка содержит недопустимый управляющий символ')
+            skip_whitespace()
+            if pos >= len(s) or s[pos] != '"':
+                raise JsonParserError("Expected string key", line)
+            key = parse_string()
+            skip_whitespace()
+            if pos >= len(s) or s[pos] != ':':
+                raise JsonParserError("Expected ':' after key", line)
+            pos += 1
+            val = parse_value()
+            obj[key] = val
+            skip_whitespace()
+            if pos >= len(s):
+                raise JsonParserError("Unterminated object", line)
+            if s[pos] == ',':
+                pos += 1
+                skip_whitespace()
+            elif s[pos] == '}':
+                pos += 1
+                return obj
             else:
-                result.append(ch)
-        return ''.join(result)
+                raise JsonParserError("Expected ',' or '}' in object", line)
 
-    number_re = re.compile(r'-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?')
+    result = parse_value()
+    skip_whitespace()
+    if pos != len(s):
+        raise JsonParserError("Extra characters after valid JSON", line)
+    return result
 
-    def _parse_number(self):
-        m = self.number_re.match(self.text, self.pos)
-        if not m:
-            self._error('Некорректное число')
-        num_str = m.group(0)
-        self.pos = m.end()
-        if '.' in num_str or 'e' in num_str or 'E' in num_str:
-            return float(num_str)
+
+def pretty_print(obj, indent=2):
+    def _pp(o, level):
+        sp = ' ' * (level * indent)
+        if o is None:
+            return "null"
+        elif isinstance(o, bool):
+            return "true" if o else "false"
+        elif isinstance(o, (int, float)):
+            return str(o)
+        elif isinstance(o, str):
+            esc = o.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t',
+                                                                                                                '\\t')
+            return '"' + esc + '"'
+        elif isinstance(o, list):
+            if not o:
+                return "[]"
+            inner = ",\n".join(sp + ' ' * indent + _pp(i, level + 1) for i in o)
+            return "[\n" + inner + "\n" + sp + "]"
+        elif isinstance(o, dict):
+            if not o:
+                return "{}"
+            inner = ",\n".join(sp + ' ' * indent + serialize(k) + ": " + _pp(v, level + 1) for k, v in o.items())
+            return "{\n" + inner + "\n" + sp + "}"
         else:
-            return int(num_str)
+            raise TypeError("Type not serializable: " + str(type(o)))
 
-    def _error(self, message):
-        snippet = self.text[self.pos:self.pos+20].split('\n',1)[0]
-        raise ValueError(f'Ошибка в JSON на строке {self.line}: {message}. Текущий фрагмент: {snippet!r}')
-
-    def pretty_print(self, obj, indent=4):
-        return self._pretty(obj, indent, 0)
-
-    def _pretty(self, obj, indent, level):
-        space = ' ' * (indent * level)
-        if obj is None:
-            return 'null'
-        elif isinstance(obj, bool):
-            return 'true' if obj else 'false'
-        elif isinstance(obj, (int, float)):
-            return str(obj)
-        elif isinstance(obj, str):
-            return self._serialize_string(obj)
-        elif isinstance(obj, list):
-            if not obj:
-                return '[]'
-            items = [self._pretty(el, indent, level + 1) for el in obj]
-            return '[\n' + ',\n'.join(' ' * (indent * (level + 1)) + item for item in items) + '\n' + space + ']'
-        elif isinstance(obj, dict):
-            if not obj:
-                return '{}'
-            items = []
-            for k, v in obj.items():
-                item = self._serialize_string(k) + ': ' + self._pretty(v, indent, level + 1)
-                items.append(' ' * (indent * (level + 1)) + item)
-            return '{\n' + ',\n'.join(items) + '\n' + space + '}'
-        else:
-            raise TypeError(f"Тип {type(obj)} не поддерживается для pretty-print")
-
-    def validate(self, text):
-        try:
-            self.parse(text)
-            return True, None
-        except ValueError as e:
-            return False, str(e)
+    return _pp(obj, 0)
 
 
-if __name__ == '__main__':
-    parser = JsonParser()
+def validate_json(s):
+    try:
+        deserialize(s)
+        return True, None
+    except JsonParserError as e:
+        return False, str(e)
+
+def read_json_file(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        data = f.read()
+    return data
 
 
+def main():
+    filepath = "test_1.json"
+    json_str = read_json_file(filepath)
+
+    print("Оригинальный JSON из файла:")
+    print(json_str)
+
+    valid, err = validate_json(json_str)
+    if not valid:
+        print(f"Ошибка валидации: {err}")
+        return
+
+    obj = deserialize(json_str)
+    print("\nДесериализованный объект:")
+    print(obj)
+
+    serialized = serialize(obj)
+    print("\nСериализация обратно в JSON:")
+    print(serialized)
+
+    print("\nВывод с отступами (indent=2):")
+    print(pretty_print(obj, indent=2))
+
+
+if __name__ == "__main__":
+    main()
 
