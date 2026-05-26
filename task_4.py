@@ -12,7 +12,6 @@ def serialize(obj):
     elif isinstance(obj, (int, float)):
         return str(obj)
     elif isinstance(obj, str):
-        # Экранирование
         esc = obj.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t',
                                                                                                               '\\t')
         return '"' + esc + '"'
@@ -257,7 +256,7 @@ def read_json_file(filepath):
 
 
 def main():
-    filepath = "test_1.json"
+    filepath = "resource/test_1.json"
     json_str = read_json_file(filepath)
 
     print("Оригинальный JSON из файла:")
