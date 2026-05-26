@@ -1,242 +1,262 @@
-import re
+class XmlParserError(Exception):
+    def __init__(self, message, line_no):
+        super().__init__(f"Line {line_no}: {message}")
+        self.line_no = line_no
 
-class XmlParser:
-    def __init__(self):
-        self.text = ''
-        self.pos = 0
-        self.length = 0
-        self.line = 1
 
-    def serialize(self, obj, root_tag='root'):
-        xml_content = self._serialize_value(obj)
-        return f'<{root_tag}>{xml_content}</{root_tag}>'
+def escape_xml(text):
+    return (text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace('"', "&quot;")
+                .replace("'", "&apos;"))
 
-    def _serialize_value(self, obj):
-        if obj is None:
-            return ''
-        elif isinstance(obj, bool):
-            return 'true' if obj else 'false'
-        elif isinstance(obj, (int, float)):
-            return str(obj)
-        elif isinstance(obj, str):
-            return self._escape_text(obj)
-        elif isinstance(obj, list):
-            return ''.join(f'<item>{self._serialize_value(el)}</item>' for el in obj)
-        elif isinstance(obj, dict):
-            parts = []
-            for k, v in obj.items():
-                if not isinstance(k, str):
-                    raise TypeError('Ключи словаря должны быть строками!')
-                parts.append(f'<{k}>{self._serialize_value(v)}</{k}>')
-            return ''.join(parts)
+
+def unescape_xml(text):
+    return (text.replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&quot;", '"')
+                .replace("&apos;", "'")
+                .replace("&amp;", "&"))
+
+
+def serialize_xml(node):
+
+    tag = node["tag"]
+    attrs = node.get("attributes", {})
+    children = node.get("children", [])
+    text = node.get("text", None)
+
+    attr_str = ""
+    for k, v in attrs.items():
+        attr_str += f' {k}="{escape_xml(str(v))}"'
+
+    res = f"<{tag}{attr_str}>"
+
+    if text:
+        res += escape_xml(text)
+    for c in children:
+        if isinstance(c, str):
+            res += escape_xml(c)
         else:
-            raise TypeError(f"Тип {type(obj)} не поддерживается для сериализации в XML")
+            res += serialize_xml(c)
 
-    def _escape_text(self, text):
-        return (text.replace('&', '&amp;')
-                    .replace('<', '&lt;')
-                    .replace('>', '&gt;')
-                    .replace('"', '&quot;')
-                    .replace("'", '&apos;'))
+    res += f"</{tag}>"
+    return res
 
-    def parse(self, text):
-        self.text = text
-        self.pos = 0
-        self.length = len(text)
-        self.line = 1
-        self._skip_whitespace()
-        if self._peek() != '<':
-            self._error('Ожидался элемент')
-        node = self._parse_element()
-        self._skip_whitespace()
-        if self.pos != self.length:
-            self._error('Лишние символы после корневого элемента')
-        return node
 
-    def _parse_element(self):
-        assert self._peek() == '<'
-        self.pos += 1
-        self._skip_whitespace()
-        tag = self._parse_tag_name()
-        attributes = self._parse_attributes()
-        self._skip_whitespace()
+def pretty_print_xml(node, indent=2, level=0):
+    sp = " " * (indent * level)
+    tag = node["tag"]
+    attrs = node.get("attributes", {})
+    children = node.get("children", [])
+    text = node.get("text", None)
 
-        if self.text.startswith('/>', self.pos):
-            self.pos += 2
-            return {tag: None} if not attributes else {tag: {'@attributes': attributes}}
+    attr_str = ""
+    for k, v in attrs.items():
+        attr_str += f' {k}="{escape_xml(str(v))}"'
 
-        if self._peek() != '>':
-            self._error('Ожидался > в открывающем теге')
-        self.pos += 1
+    if not children and not text:
+        return f"{sp}<{tag}{attr_str}/>"
+    res = f"{sp}<{tag}{attr_str}>"
 
-        children = []
-        text_content = []
-
-        while True:
-            self._skip_whitespace()
-            if self.text.startswith(f'</{tag}>', self.pos):
-                self.pos += len(f'</{tag}>')
-                break
-
-            if self._peek() == '<':
-                if self.text.startswith('</', self.pos):
-                    continue
-                child = self._parse_element()
-                children.append(child)
+    if text:
+        res += escape_xml(text)
+    else:
+        res += "\n"
+        for c in children:
+            if isinstance(c, str):
+                res += sp + " " * indent + escape_xml(c) + "\n"
             else:
-                text = self._parse_text()
-                text_content.append(text)
+                res += pretty_print_xml(c, indent, level + 1) + "\n"
+        res += sp
+    res += f"</{tag}>"
+    return res
 
-            self._skip_whitespace()
 
-            if self.pos >= self.length:
-                self._error(f'Ожидался закрывающий тег </{tag}>')
+def deserialize_xml(s):
+    pos = 0
+    line = 1
 
-        if children:
-            res = {}
-            for child in children:
-                for k, v in child.items():
-                    if k in res:
-                        if not isinstance(res[k], list):
-                            res[k] = [res[k]]
-                        res[k].append(v)
-                    else:
-                        res[k] = v
-            if attributes:
-                res['@attributes'] = attributes
-            if text_content and ''.join(text_content).strip():
-                res['#text'] = ''.join(text_content).strip()
-            return {tag: res}
-        else:
-            val = ''.join(text_content).strip() if text_content else None
-            if attributes:
-                return {tag: {'@attributes': attributes, '#text': val} if val else {'@attributes': attributes}}
-            else:
-                return {tag: val}
+    def skip_whitespace():
+        nonlocal pos, line
+        while pos < len(s) and s[pos] in " \t\r\n":
+            if s[pos] == '\n':
+                line += 1
+            pos += 1
 
-    def _parse_tag_name(self):
-        m = re.match(r'[a-zA-Z_:][a-zA-Z0-9_\-.:]*', self.text[self.pos:])
-        if not m:
-            self._error('Некорректное имя тега')
-        tag = m.group(0)
-        self.pos += len(tag)
-        return tag
+    def parse_tag_name():
+        nonlocal pos, line
+        start = pos
+        while pos < len(s) and (s[pos].isalnum() or s[pos] in "-_:"):
+            pos += 1
+        if start == pos:
+            raise XmlParserError("Expected tag name", line)
+        return s[start:pos]
 
-    def _parse_attributes(self):
+    def parse_attributes():
+        nonlocal pos, line
         attrs = {}
         while True:
-            self._skip_whitespace()
-            if self._peek() in ['>', '/', '']:
+            skip_whitespace()
+            if pos >= len(s) or s[pos] in ['>', '/', '?']:
                 break
-            name = self._parse_tag_name()
-            self._skip_whitespace()
-            if self._peek() != '=':
-                self._error('Ожидался = после имени атрибута')
-            self.pos += 1
-            self._skip_whitespace()
-            quote = self._peek()
-            if quote not in ['"', "'"]:
-                self._error('Атрибут должен быть в кавычках')
-            self.pos += 1
-            value_start = self.pos
-            while self.pos < self.length and self._peek() != quote:
-                self.pos += 1
-            if self.pos >= self.length:
-                self._error('Незакрытая кавычка в атрибуте')
-            value = self.text[value_start:self.pos]
-            value = self._unescape_text(value)
-            self.pos += 1
-            attrs[name] = value
+            start = pos
+            while pos < len(s) and (s[pos].isalnum() or s[pos] in ['-', '_', ':']):
+                pos += 1
+            attr_name = s[start:pos]
+            if not attr_name:
+                break
+            skip_whitespace()
+            if pos >= len(s) or s[pos] != '=':
+                raise XmlParserError("Expected '=' after attribute name", line)
+            pos += 1
+            skip_whitespace()
+            if pos >= len(s) or s[pos] not in ['"', "'"]:
+                raise XmlParserError("Expected quote to start attribute value", line)
+            quote_char = s[pos]
+            pos += 1
+            start_val = pos
+            while pos < len(s) and s[pos] != quote_char:
+                if s[pos] == '\n':
+                    line += 1
+                pos += 1
+            if pos >= len(s):
+                raise XmlParserError("Unterminated attribute value", line)
+            attr_value = s[start_val:pos]
+            pos += 1
+            attrs[attr_name] = unescape_xml(attr_value)
         return attrs
 
-    def _parse_text(self):
-        start = self.pos
-        while self.pos < self.length and self._peek() != '<':
-            ch = self._peek()
-            if ch == '\n':
-                self.line += 1
-            self.pos += 1
-        text = self.text[start:self.pos]
-        return self._unescape_text(text.strip())
+    def parse_node():
+        nonlocal pos, line
+        skip_whitespace()
+        if pos >= len(s) or s[pos] != '<':
+            raise XmlParserError("Expected '<'", line)
+        pos += 1
 
-    def _peek(self):
-        if self.pos < self.length:
-            return self.text[self.pos]
-        return ''
+        if pos < len(s) and s[pos] == '/':
+            raise XmlParserError("Unexpected closing tag", line)
+        if pos < len(s) and s[pos] == '?':
+            pos += 1
+            while pos < len(s) and not (s[pos - 1] == '?' and s[pos] == '>'):
+                if s[pos] == '\n':
+                    line += 1
+                pos += 1
+            pos += 1
+            return parse_node()
 
-    def _skip_whitespace(self):
-        while self.pos < self.length and self.text[self.pos] in ' \t\r\n':
-            if self.text[self.pos] == '\n':
-                self.line += 1
-            self.pos += 1
+        tag = parse_tag_name()
+        attrs = parse_attributes()
+        skip_whitespace()
 
-    def _unescape_text(self, text):
-        text = (text.replace('&lt;', '<')
-                    .replace('&gt;', '>')
-                    .replace('&amp;', '&')
-                    .replace('&quot;', '"')
-                    .replace('&apos;', "'"))
-        return text
+        if pos < len(s) and s[pos] == '/':
+            pos += 1
+            if pos >= len(s) or s[pos] != '>':
+                raise XmlParserError("Expected '>' after '/' in self-closing tag", line)
+            pos += 1
+            return {
+                "tag": tag,
+                "attributes": attrs,
+                "children": [],
+                "text": None,
+            }
 
-    def _error(self, message):
-        snippet = self.text[self.pos:self.pos+20].split('\n',1)[0]
-        raise ValueError(f'Ошибка в XML на строке {self.line}: {message}. Текущий фрагмент: {snippet!r}')
+        if pos >= len(s) or s[pos] != '>':
+            raise XmlParserError("Expected '>'", line)
+        pos += 1
 
+        children = []
+        text_content = ""
 
-    def pretty_print(self, obj, indent=4):
-        if not isinstance(obj, dict) or len(obj) != 1:
-            raise TypeError('Для pretty_print ожидается dict с одним корневым элементом')
-        root_tag = list(obj.keys())[0]
-        return self._pretty_element(root_tag, obj[root_tag], indent, 0)
-
-    def _pretty_element(self, tag, content, indent, level):
-        space = ' ' * (indent * level)
-
-        attrs = ''
-        children = ''
-        text = ''
-
-        if isinstance(content, dict):
-            attrs_dict = content.get('@attributes', {})
-            text = content.get('#text', '')
-            other_keys = [k for k in content.keys() if k not in ('@attributes', '#text')]
-            attrs = ''.join(f' {k}="{self._escape_text(str(v))}"' for k, v in attrs_dict.items())
-
-            if other_keys:
-                children_parts = []
-                for k in other_keys:
-                    v = content[k]
-                    if isinstance(v, list):
-                        for el in v:
-                            children_parts.append(self._pretty_element(k, el, indent, level + 1))
-                    else:
-                        children_parts.append(self._pretty_element(k, v, indent, level + 1))
-                children = '\n'.join(children_parts)
-                if text:
-                    children = self._escape_text(text) + '\n' + children
-                return f'{space}<{tag}{attrs}>\n{children}\n{space}</{tag}>'
-            else:
-                if text:
-                    return f'{space}<{tag}{attrs}>{self._escape_text(text)}</{tag}>'
+        while True:
+            skip_whitespace()
+            if pos >= len(s):
+                raise XmlParserError(f"Unclosed tag <{tag}>", line)
+            if s[pos] == '<':
+                if pos + 1 < len(s) and s[pos + 1] == '/':
+                    pos += 2
+                    close_tag = parse_tag_name()
+                    if close_tag != tag:
+                        raise XmlParserError(f"Mismatched closing tag, expected </{tag}> but got </{close_tag}>", line)
+                    skip_whitespace()
+                    if pos >= len(s) or s[pos] != '>':
+                        raise XmlParserError("Expected '>' for closing tag", line)
+                    pos += 1
+                    break
                 else:
-                    return f'{space}<{tag}{attrs} />'
-        elif isinstance(content, list):
-            parts = []
-            for el in content:
-                parts.append(self._pretty_element(tag, el, indent, level))
-            return '\n'.join(parts)
-        elif content is None:
-            return f'{space}<{tag} />'
+                    if text_content.strip():
+                        children.append(unescape_xml(text_content))
+                        text_content = ""
+                    child_node = parse_node()
+                    children.append(child_node)
+            else:
+                text_content += s[pos]
+                if s[pos] == '\n':
+                    line += 1
+                pos += 1
+
+        if text_content.strip():
+            text = unescape_xml(text_content.strip())
         else:
-            return f'{space}<{tag}>{self._escape_text(str(content))}</{tag}>'
+            text = None
 
-    def validate(self, text):
-        try:
-            self.parse(text)
-            return True, None
-        except ValueError as e:
-            return False, str(e)
+        if children and text is not None:
+            children.insert(0, text)
+            text = None
 
-if __name__ == '__main__':
-    parser = XmlParser()
+        return {
+            "tag": tag,
+            "attributes": attrs,
+            "children": children,
+            "text": text,
+        }
+
+    skip_whitespace()
+    res = parse_node()
+    skip_whitespace()
+    if pos != len(s):
+        raise XmlParserError("Extra data after closing root tag", line)
+    return res
+
+
+def validate_xml(s):
+    try:
+        deserialize_xml(s)
+        return True, None
+    except XmlParserError as e:
+        return False, str(e)
+
+
+def read_xml_file(filepath):
+    with open(filepath, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+def main():
+    filepath = "resource/test_1.xml"
+    xml_str = read_xml_file(filepath)
+
+    print("Оригинальный XML из файла:")
+    print(xml_str)
+
+    valid, err = validate_xml(xml_str)
+    if not valid:
+        print(f"Ошибка валидации: {err}")
+        return
+
+    obj = deserialize_xml(xml_str)
+    print("\nДесериализованный объект:")
+    print(obj)
+
+    serialized = serialize_xml(obj)
+    print("\nСериализация обратно в XML:")
+    print(serialized)
+
+    print("\nВывод с отступами (indent=2):")
+    print(pretty_print_xml(obj, indent=2))
+
+
+if __name__ == "__main__":
+    main()
 
