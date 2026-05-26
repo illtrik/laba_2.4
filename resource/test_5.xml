@@ -1,0 +1,37 @@
+<cloud provider="aws" region="eu-central-1">
+    <vpc id="vpc-123">
+        <subnets>
+            <subnet id="subnet-a" cidr="10.0.1.0/24">
+                <instances>
+                    <instance id="i-001" type="t3.medium" status="running">
+                        <securityGroups>
+                            <group>sg-1</group>
+                            <group>sg-2</group>
+                        </securityGroups>
+                    </instance>
+                </instances>
+            </subnet>
+        </subnets>
+
+        <securityGroups>
+            <group id="sg-1">
+                <rule>
+                    <protocol>tcp</protocol>
+                    <port>22</port>
+                    <source>0.0.0.0/0</source>
+                </rule>
+            </group>
+        </securityGroups>
+    </vpc>
+
+    <loadBalancers>
+        <loadBalancer name="lb-1" type="application">
+            <listeners>
+                <listener>
+                    <port>80</port>
+                    <targetGroup>tg-1</targetGroup>
+                </listener>
+            </listeners>
+        </loadBalancer>
+    </loadBalancers>
+</cloud>

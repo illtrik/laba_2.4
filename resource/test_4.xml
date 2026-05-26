@@ -1,0 +1,34 @@
+<socialNetwork>
+    <user id="1">
+        <name>Alice</name>
+        <friends>
+            <friend id="2"/>
+            <friend id="3"/>
+        </friends>
+
+        <posts>
+            <post id="p1">
+                <content>Hello world</content>
+                <likes>
+                    <userId>2</userId>
+                    <userId>3</userId>
+                </likes>
+                <comments>
+                    <comment>
+                        <userId>2</userId>
+                        <text>Hi!</text>
+                        <timestamp>2026-04-05T10:00:00Z</timestamp>
+                    </comment>
+                </comments>
+            </post>
+        </posts>
+    </user>
+
+    <user id="2">
+        <name>Bob</name>
+        <friends>
+            <friend id="1"/>
+        </friends>
+        <posts/>
+    </user>
+</socialNetwork>

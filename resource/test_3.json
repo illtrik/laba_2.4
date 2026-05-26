@@ -1,0 +1,18 @@
+{
+  "customer": "John Doe",
+  "items": [
+    {
+      "productId": "P100",
+      "name": "Laptop",
+      "price": 1200.5,
+      "quantity": 1
+    },
+    {
+      "productId": "P200",
+      "name": "Mouse",
+      "price": 25.0,
+      "quantity": 2
+    }
+  ],
+  "total": 1250.5
+}

@@ -1,0 +1,47 @@
+{
+  "cloudProvider": "aws",
+  "region": "eu-central-1",
+  "vpcs": [
+    {
+      "vpcId": "vpc-123",
+      "subnets": [
+        {
+          "subnetId": "subnet-a",
+          "cidr": "10.0.1.0/24",
+          "instances": [
+            {
+              "instanceId": "i-001",
+              "type": "t3.medium",
+              "status": "running",
+              "securityGroups": ["sg-1", "sg-2"]
+            }
+          ]
+        }
+      ],
+      "securityGroups": [
+        {
+          "id": "sg-1",
+          "rules": [
+            {
+              "protocol": "tcp",
+              "port": 22,
+              "source": "0.0.0.0/0"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "loadBalancers": [
+    {
+      "name": "lb-1",
+      "type": "application",
+      "listeners": [
+        {
+          "port": 80,
+          "targetGroup": "tg-1"
+        }
+      ]
+    }
+  ]
+}

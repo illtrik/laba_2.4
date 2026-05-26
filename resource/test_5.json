@@ -1,0 +1,45 @@
+{
+  "status": "success",
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "profile": {
+          "name": "Alice",
+          "contacts": {
+            "email": "alice@example.com",
+            "phones": ["+123456789", "+987654321"]
+          }
+        },
+        "permissions": [
+          {
+            "resource": "files",
+            "actions": ["read", "write"]
+          },
+          {
+            "resource": "settings",
+            "actions": ["read"]
+          }
+        ],
+        "sessions": [
+          {
+            "sessionId": "abc123",
+            "ip": "192.168.0.1",
+            "lastActive": "2026-04-05T10:00:00Z"
+          }
+        ]
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 10,
+      "totalPages": 5,
+      "totalItems": 42
+    }
+  },
+  "errors": [],
+  "meta": {
+    "requestId": "req-789",
+    "timestamp": 1712318400
+  }
+}

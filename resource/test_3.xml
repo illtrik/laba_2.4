@@ -1,0 +1,24 @@
+<trace id="trace-xyz">
+    <service name="auth-service">
+        <span id="s1" status="ok">
+            <start>2026-04-05T10:00:00Z</start>
+            <durationMs>25</durationMs>
+        </span>
+    </service>
+
+    <service name="order-service">
+        <span id="s2" status="error">
+            <start>2026-04-05T10:00:01Z</start>
+            <durationMs>120</durationMs>
+            <error>
+                <code>500</code>
+                <message>Database timeout</message>
+            </error>
+        </span>
+    </service>
+
+    <metadata>
+        <region>eu-central-1</region>
+        <environment>production</environment>
+    </metadata>
+</trace>

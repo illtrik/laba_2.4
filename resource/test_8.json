@@ -1,0 +1,35 @@
+{
+  "traceId": "trace-xyz",
+  "services": [
+    {
+      "serviceName": "auth-service",
+      "spans": [
+        {
+          "spanId": "s1",
+          "start": "2026-04-05T10:00:00Z",
+          "durationMs": 25,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "serviceName": "order-service",
+      "spans": [
+        {
+          "spanId": "s2",
+          "start": "2026-04-05T10:00:01Z",
+          "durationMs": 120,
+          "status": "error",
+          "error": {
+            "code": 500,
+            "message": "Database timeout"
+          }
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "region": "eu-central-1",
+    "environment": "production"
+  }
+}

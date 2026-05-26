@@ -1,0 +1,41 @@
+{
+  "accountId": "ACC-998877",
+  "owner": {
+    "name": "John Doe",
+    "country": "DE",
+    "verified": true
+  },
+  "balances": {
+    "EUR": 10250.75,
+    "USD": 500.0,
+    "BTC": 0.125
+  },
+  "transactions": [
+    {
+      "id": "TX-1",
+      "type": "transfer",
+      "amount": 200.5,
+      "currency": "EUR",
+      "timestamp": "2026-04-05T09:00:00Z",
+      "details": {
+        "to": "ACC-123456",
+        "fee": 0.5
+      }
+    },
+    {
+      "id": "TX-2",
+      "type": "exchange",
+      "amount": 0.01,
+      "currency": "BTC",
+      "timestamp": "2026-04-05T11:00:00Z",
+      "details": {
+        "fromCurrency": "EUR",
+        "rate": 65000.0
+      }
+    }
+  ],
+  "limits": {
+    "daily": 5000,
+    "monthly": 50000
+  }
+}

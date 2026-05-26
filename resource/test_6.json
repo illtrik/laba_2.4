@@ -1,0 +1,38 @@
+{
+  "networkId": "net-001",
+  "location": "Factory A",
+  "devices": [
+    {
+      "deviceId": "dev-1001",
+      "type": "temperature_sensor",
+      "status": "online",
+      "firmware": {
+        "version": "1.2.3",
+        "lastUpdate": "2026-04-01T10:00:00Z"
+      },
+      "metrics": [
+        {
+          "timestamp": "2026-04-05T10:00:00Z",
+          "values": {
+            "temperature": 22.5,
+            "humidity": 45.2
+          }
+        },
+        {
+          "timestamp": "2026-04-05T10:05:00Z",
+          "values": {
+            "temperature": 22.8,
+            "humidity": 44.9
+          }
+        }
+      ],
+      "alerts": [
+        {
+          "type": "threshold",
+          "severity": "warning",
+          "message": "Temperature approaching limit"
+        }
+      ]
+    }
+  ]
+}

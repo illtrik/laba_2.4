@@ -1,0 +1,29 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Alice",
+      "friends": [2, 3],
+      "posts": [
+        {
+          "postId": "p1",
+          "content": "Hello world",
+          "likes": [2, 3],
+          "comments": [
+            {
+              "userId": 2,
+              "text": "Hi!",
+              "timestamp": "2026-04-05T10:00:00Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Bob",
+      "friends": [1],
+      "posts": []
+    }
+  ]
+}

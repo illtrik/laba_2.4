@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<enterprise>
+    <metadata>
+        <name>TechCorp</name>
+        <created>2026-04-05</created>
+        <region>EU</region>
+    </metadata>
+    <departments>
+        <department id="d1" name="Engineering">
+            <teams>
+                <team id="t1" name="Backend">
+                    <employees>
+                        <employee id="e1">
+                            <name>Alice</name>
+                            <position>Senior Developer</position>
+                            <skills>
+                                <skill>Python</skill>
+                                <skill>Go</skill>
+                                <skill>Docker</skill>
+                            </skills>
+                        </employee>
+                        <employee id="e2">
+                            <name>Bob</name>
+                            <position>DevOps Engineer</position>
+                            <skills>
+                                <skill>AWS</skill>
+                                <skill>Kubernetes</skill>
+                            </skills>
+                        </employee>
+                    </employees>
+                </team>
+                <team id="t2" name="Frontend">
+                    <employees>
+                        <employee id="e3">
+                            <name>Charlie</name>
+                            <position>UI Engineer</position>
+                            <skills>
+                                <skill>React</skill>
+                                <skill>TypeScript</skill>
+                            </skills>
+                        </employee>
+                    </employees>
+                </team>
+            </teams>
+        </department>
+        <department id="d2" name="Finance">
+            <teams>
+                <team id="t3" name="Accounting">
+                    <employees>
+                        <employee id="e4">
+                            <name>Diana</name>
+                            <position>Accountant</position>
+                            <skills>
+                                <skill>Excel</skill>
+                                <skill>SQL</skill>
+                            </skills>
+                        </employee>
+                    </employees>
+                </team>
+            </teams>
+        </department>
+    </departments>
+    <projects>
+        <project id="p1" status="active">
+            <name>AI Platform</name>
+            <budget currency="USD">1000000</budget>
+            <teamRefs>
+                <teamRef id="t1"/>
+                <teamRef id="t2"/>
+            </teamRefs>
+        </project>
+        <project id="p2" status="planning">
+            <name>Cloud Migration</name>
+            <budget currency="EUR">500000</budget>
+            <teamRefs>
+                <teamRef id="t3"/>
+            </teamRefs>
+        </project>
+    </projects>
+    <infrastructure>
+        <servers>
+            <server id="s1" status="running">
+                <ip>192.168.1.10</ip>
+                <os>Linux</os>
+                <resources>
+                    <cpu>8</cpu>
+                    <memory>32GB</memory>
+                </resources>
+            </server>
+            <server id="s2" status="stopped">
+                <ip>192.168.1.11</ip>
+                <os>Windows</os>
+                <resources>
+                    <cpu>4</cpu>
+                    <memory>16GB</memory>
+                </resources>
+            </server>
+        </servers>
+        <databases>
+            <database id="db1" type="postgres">
+                <host>db.internal</host>
+                <port>5432</port>
+            </database>
+        </databases>
+    </infrastructure>
+    <logs>
+        <log level="INFO" timestamp="2026-04-05T10:00:00Z">
+            System started
+        </log>
+        <log level="ERROR" timestamp="2026-04-05T10:05:00Z">
+            Connection timeout
+        </log>
+    </logs>
+</enterprise>

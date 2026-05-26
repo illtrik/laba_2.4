@@ -1,0 +1,25 @@
+{
+  "project": "AI Research",
+  "metadata": {
+    "createdAt": "2026-04-05T12:00:00Z",
+    "updatedAt": null,
+    "tags": ["ai", "ml", "nlp"]
+  },
+  "team": [
+    {
+      "name": "Alice",
+      "skills": ["Python", "TensorFlow"],
+      "availability": 0.8
+    },
+    {
+      "name": "Bob",
+      "skills": ["C++", "CUDA"],
+      "availability": 0.6
+    }
+  ],
+  "budget": {
+    "currency": "USD",
+    "amount": 500000
+  },
+  "isActive": true
+}

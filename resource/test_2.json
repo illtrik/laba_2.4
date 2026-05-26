@@ -1,0 +1,9 @@
+{
+  "user": {
+    "id": 101,
+    "username": "dev_user",
+    "email": "dev@example.com"
+  },
+  "active": true,
+  "roles": ["user", "editor"]
+}

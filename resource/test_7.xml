@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecommercePlatform>
+    <info>
+        <name>ShopMaster</name>
+        <version>2.5.1</version>
+        <region>EU</region>
+    </info>
+
+    <users>
+        <user id="u1" status="active">
+            <name>John Doe</name>
+            <email>john@example.com</email>
+            <addresses>
+                <address type="home">
+                    <city>Berlin</city>
+                    <street>Main Street 1</street>
+                    <zip>10115</zip>
+                </address>
+                <address type="work">
+                    <city>Munich</city>
+                    <street>Office Park 5</street>
+                    <zip>80331</zip>
+                </address>
+            </addresses>
+        </user>
+
+        <user id="u2" status="inactive">
+            <name>Alice Smith</name>
+            <email>alice@example.com</email>
+            <addresses>
+                <address type="home">
+                    <city>Hamburg</city>
+                    <street>Lake Road 12</street>
+                    <zip>20095</zip>
+                </address>
+            </addresses>
+        </user>
+    </users>
+
+    <products>
+        <product id="p1" category="electronics">
+            <name>Laptop</name>
+            <price currency="EUR">1200</price>
+            <stock>15</stock>
+            <attributes>
+                <attribute name="brand">BrandX</attribute>
+                <attribute name="ram">16GB</attribute>
+            </attributes>
+        </product>
+
+        <product id="p2" category="accessories">
+            <name>Mouse</name>
+            <price currency="EUR">25</price>
+            <stock>150</stock>
+            <attributes>
+                <attribute name="brand">BrandY</attribute>
+            </attributes>
+        </product>
+    </products>
+
+    <orders>
+        <order id="o1" userId="u1" status="shipped">
+            <items>
+                <item productId="p1" quantity="1"/>
+                <item productId="p2" quantity="2"/>
+            </items>
+            <total currency="EUR">1250</total>
+            <shipment>
+                <carrier>DHL</carrier>
+                <tracking>TRACK123</tracking>
+                <status>in_transit</status>
+            </shipment>
+        </order>
+
+        <order id="o2" userId="u2" status="processing">
+            <items>
+                <item productId="p2" quantity="1"/>
+            </items>
+            <total currency="EUR">25</total>
+        </order>
+    </orders>
+
+    <payments>
+        <payment id="pay1" orderId="o1" method="card">
+            <amount currency="EUR">1250</amount>
+            <status>completed</status>
+        </payment>
+    </payments>
+
+    <warehouse>
+        <locations>
+            <location id="w1">
+                <city>Frankfurt</city>
+                <capacity>1000</capacity>
+            </location>
+        </locations>
+
+        <inventory>
+            <entry productId="p1" locationId="w1">
+                <quantity>15</quantity>
+            </entry>
+            <entry productId="p2" locationId="w1">
+                <quantity>150</quantity>
+            </entry>
+        </inventory>
+    </warehouse>
+
+    <logs>
+        <log level="INFO" time="2026-04-05T12:00:00Z">
+            Order o1 shipped
+        </log>
+        <log level="WARN" time="2026-04-05T12:10:00Z">
+            Low stock for product p1
+        </log>
+    </logs>
+</ecommercePlatform>
