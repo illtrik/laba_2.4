@@ -4,37 +4,33 @@ import os
 import json
 import xml.etree.ElementTree as ET
 
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
-import os
+KEY = 0x5A
 
-KEY = b'12345678901234567890123456789012'
 STORAGE_DIR = 'storage'
-
 if not os.path.exists(STORAGE_DIR):
     os.makedirs(STORAGE_DIR)
 
+def rotate_left(val, n):
+    return ((val << n) | (val >> (8 - n))) & 0xFF
+
+def rotate_right(val, n):
+    return ((val >> n) | (val << (8 - n))) & 0xFF
+
 def encrypt_data(data: bytes) -> bytes:
-    iv = os.urandom(16)
-    padder = padding.PKCS7(128).padder()
-    padded_data = padder.update(data) + padder.finalize()
+    result = bytearray()
+    for b in data:
+        r = rotate_left(b, 2)
+        c = r ^ KEY
+        result.append(c)
+    return bytes(result)
 
-    cipher = Cipher(algorithms.AES(KEY), modes.CBC(iv), backend=default_backend())
-    encryptor = cipher.encryptor()
-    encrypted = encryptor.update(padded_data) + encryptor.finalize()
-    return iv + encrypted
-
-def decrypt_data(encrypted_data: bytes) -> bytes:
-    iv = encrypted_data[:16]
-    encrypted = encrypted_data[16:]
-    cipher = Cipher(algorithms.AES(KEY), modes.CBC(iv), backend=default_backend())
-    decryptor = cipher.decryptor()
-    padded_data = decryptor.update(encrypted) + decryptor.finalize()
-
-    unpadder = padding.PKCS7(128).unpadder()
-    data = unpadder.update(padded_data) + unpadder.finalize()
-    return data
+def decrypt_data(data: bytes) -> bytes:
+    result = bytearray()
+    for b in data:
+        r = b ^ KEY
+        c = rotate_right(r, 2)
+        result.append(c)
+    return bytes(result)
 
 def validate_file(filename: str, data: bytes) -> bool:
     try:
@@ -49,14 +45,14 @@ def validate_file(filename: str, data: bytes) -> bool:
         return False
 
 def handle_client(conn, addr):
-    print(f"Connection from {addr}")
+    print(f"Connected: {addr}")
     try:
         while True:
             header = b''
             while not header.endswith(b'\n'):
                 part = conn.recv(1)
                 if not part:
-                    print(f"Connection closed by {addr}")
+                    print(f"Disconnected: {addr}")
                     return
                 header += part
             header_str = header.decode().strip()
@@ -76,7 +72,7 @@ def handle_client(conn, addr):
                     received += conn.recv(length - len(received))
                 data = received
 
-                print(f"Received file {filename} ({length} bytes)")
+                print(f"Received: {filename} ({length} bytes)")
                 if not validate_file(filename, data):
                     conn.sendall(b'ERROR: Invalid file format\n')
                     continue
@@ -98,10 +94,10 @@ def handle_client(conn, addr):
             else:
                 conn.sendall(b'ERROR: Unknown command\n')
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error with {addr}: {e}")
     finally:
         conn.close()
-        print(f"Connection closed {addr}")
+        print(f"Connection closed: {addr}")
 
 def main():
     HOST = '0.0.0.0'
@@ -109,11 +105,10 @@ def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind((HOST, PORT))
     server.listen()
-    print(f"Server listening on {HOST}:{PORT}")
+    print(f"Server started on {HOST}:{PORT}")
     while True:
         conn, addr = server.accept()
-        t = threading.Thread(target=handle_client, args=(conn, addr))
-        t.start()
+        threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
 
 if __name__ == '__main__':
     main()
